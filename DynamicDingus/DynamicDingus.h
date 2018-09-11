@@ -22,7 +22,8 @@ public:
 
 	void pushbefore(TYPE value);
 	void pushafter(TYPE value);
-		TYPE pop();
+		
+	    TYPE pop();
 
 		void set(size_t index, TYPE value);
 		TYPE get(size_t index);
@@ -34,12 +35,9 @@ public:
 	private:
 		size_t allocatedElements;
 		size_t usedElements;
-		//int allocated;
-		//int used;
 		TYPE* theArray;
-		//size_t initialSize ;
-		int spaceMulti = 10;//number of spots
-		//int nextIndex; // the next highest index value 
+		size_t initialSize ;
+		int spaceMulti = 2;
 
 		//Your class will need the following functions :
 		
@@ -54,10 +52,11 @@ public:
 template<class TYPE>
 DynamicDingus<TYPE>::DynamicDingus()
 {
-	//initialSize 
-	allocatedElements = sizeof(TYPE) * spaceMulti;
+	initialSize = sizeof(TYPE) * 10;
+	allocatedElements = initialSize;
 	usedElements = 0;
-	theArray = new TYPE[allocatedElements]();
+	auto a = new TYPE[allocatedElements]();
+	theArray = a;
 }
 
 template <class TYPE>
@@ -99,7 +98,7 @@ void DynamicDingus<TYPE>::pushfront(TYPE value)
 	if (allocatedElements == usedElements)
 	{
 		//	newData = new array[array.allocatedElements * 2];
-		auto NewDingus = new DynamicDingus<TYPE>[allocatedElements * 2];
+		auto NewDingus = new TYPE[allocatedElements * spaceMulti];
 		//copy(newData, array.data, array.allocatedElements);
 		copy(NewDingus, theArray, allocatedElements);
 		//delete array.data
@@ -137,20 +136,12 @@ DynamicDingus<TYPE>& DynamicDingus<TYPE>::operator=(const DynamicDingus<TYPE>& o
 	{
 		this->Clear(); //the one we are copying from is empty so I need to be too
 	}
-
-	//check if I am is smaller if so grow me
-	if (other.getAllocatedInt() >= this->getAllocatedInt())
-	{
-		allocatedElements = other.getAllocatedInt() *(sizeof(TYPE) + 10 * sizeof(TYPE));
-	}
+	auto a = new TYPE[other.getAllocatedInt() * sizeof(TYPE)];
 	//copy from 0 - how ever many are allocated to how every are in the other
 	for (int i = 0; i < other.getAllocatedInt(); i++)
-		this[i] = other[i];
-	//fill any remaining spots with new empty TYPES if its larger
-	if (other.getAllocatedInt() < this->getAllocatedInt()) {
-		for (int j = other.getAllocatedInt(); j < this->getAllocatedInt(); j++)
-			this[j] = TYPE();
-	}
+		a[i] = other[i];
+
+	theArray = a;
 	return this;
 }
 
