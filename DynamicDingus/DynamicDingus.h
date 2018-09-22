@@ -7,13 +7,13 @@ public:
 	//  a.A constructor, destructor, assignment operator and copy constructor
 	DynamicDingus();
 	~DynamicDingus();
-	DynamicDingus(const DynamicDingus<TYPE>*& other);
+	DynamicDingus(const DynamicDingus<TYPE>& other);
 	DynamicDingus<TYPE>& operator = (const DynamicDingus<TYPE>& other);
 
 	TYPE& operator[](int index);
 	int getAllocatedInt() const { return allocatedElements / sizeof(TYPE); }
 	int getUsedInt() const { return usedElements / sizeof(TYPE); }
-	void setUsedInt(int a){usedElements = a * sizeof(TYPE)}
+	void setUsedInt(int a) { usedElements = a * sizeof(TYPE); }
 	//	b.Functions for adding and removing from the end of the array
 	void pushback(TYPE value);
 	void pushfront(TYPE value);
@@ -55,8 +55,7 @@ DynamicDingus<TYPE>::DynamicDingus()
 	initialSize = sizeof(TYPE) * 10;
 	allocatedElements = initialSize;
 	usedElements = 0;
-	auto a = new TYPE[allocatedElements]();
-	theArray = a;
+	theArray = new TYPE[allocatedElements]();
 }
 
 template <class TYPE>
@@ -72,7 +71,7 @@ void DynamicDingus<TYPE>::pushback(TYPE value)
 	if (allocatedElements == usedElements)
 	{
 		//	newData = new array[array.allocatedElements * 2];
-		auto NewDingus = new DynamicDingus<TYPE>[allocatedElements * 2];
+		auto NewDingus = new TYPE[allocatedElements * 2];
 		//copy(newData, array.data, array.allocatedElements);
 		copy(NewDingus, theArray, allocatedElements);
 		//delete array.data
@@ -120,9 +119,7 @@ void DynamicDingus<TYPE>::pushfront(TYPE value)
 template <class TYPE>
 void DynamicDingus<TYPE>::Clear()
 {
-	TYPE* a = new TYPE[sizeof(TYPE) * spaceMulti]();
-	delete[] theArray;
-	theArray = a;
+	usedElements = 0;	
 }
 
 template <class TYPE>
@@ -150,8 +147,9 @@ TYPE& DynamicDingus<TYPE>::operator[](int index) {
 
 
 	if (index >= this->getAllocatedInt()) {
+
 		//number of elements = this far in in TYPE bytes + 10 * TYPE bytes
-		allocatedElements = index * sizeof(TYPE) + 10;
+		allocatedElements = index * spaceMulti;
 		//the next array cause the old one does not go that high
 		TYPE* NewDingus = new TYPE[allocatedElements];
 		//from 0 - the last index copy in
