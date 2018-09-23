@@ -1,5 +1,6 @@
 #pragma once
 #include <cassert>
+#include <algorithm>
 
 
 template<typename T>
@@ -38,7 +39,11 @@ public:
 		data[size] = value;
 		Grow();
 
-		Sort();
+		//if its sorted and double check its not ordered as ordered takes priority over sorted
+		//as you can sort later or manually but you cannot order later
+		if (sorted && !ordered) {
+			Sort(*this, 0, size);
+		}
 	}
 
 	void PushFront(T value)
@@ -62,7 +67,11 @@ public:
 		data[pos] = value;
 		Grow();
 
-		Sort();
+		//if its sorted and double check its not ordered as ordered takes priority over sorted
+		//as you can sort later or manually but you cannot order later
+		if (sorted && !ordered) {
+			Sort(*this, 0, size);
+		}
 	}
 
 	T PopBack()
@@ -98,23 +107,83 @@ public:
 		}
 		Shrink();
 	}
-	void Sort()
+
+	// quick sort
+	void Sort(DynamicArray& data, int begin, int end)
 	{
-		//todo Impliment
+		if (begin < end)
+		{
+			int DivideIndex = Divide(data, begin, end);
+
+			Sort(data, begin, DivideIndex - 1);  // Before pi
+			Sort(data, DivideIndex + 1, end); // After pi
+		}
+
 	}
-	void HashedSort(unsigned int hashtosearch)
+	int Divide(DynamicArray& data,int begin,int end)
 	{
-		//todo Impliment
-	}
-	void Hash()
-	{
-		//todo Impliment
-	}
-	void CheckVsHashed()
-	{
-		//todo Impliment
+		// pivot (Element to be placed at right position)
+		T pivot = data[end -1];
+
+		int i = (begin - 1);  // Index of smaller element
+
+			for (int j = begin; j < end - 1; j++)
+			{
+				// If current element is smaller than or
+				// equal to pivot
+				if (data[j] <= pivot)
+				{
+					i++;    // increment index of smaller element
+					swap(*this,data[i],i, data[j],j);
+				}
+			}
+			swap(*this,data[i + 1], i + 1, data[end - 1], end - 1);
+			return (i + 1);
 	}
 
+	void swap(DynamicArray& data,T rhs, int rhsindex,T lhs,int lhsindex)
+	{
+		//left is right
+		data[lhsindex] = rhs;
+		//rhs is stored left
+		data[rhsindex] = lhs;
+	}
+	//Binary search
+	int Search(DynamicArray& data, T findMe, int leftEnd,int rightEnd)
+	{
+		if(!sorted)
+		{
+			Sort(*this, 0, size);
+		}
+		//if we are in the area we are checking
+		if(rightEnd >= leftEnd)
+		{
+			//middle
+			//was using rightEnd / 2 but does not work recursively as we move the left point
+			auto middle = leftEnd + (rightEnd - leftEnd) / 2;
+
+			//is it in the middle
+			if(data[middle] == findMe)
+			{
+				return middle;
+			}
+
+			//if its smaller
+			if(data[middle] > findMe)
+			{
+				return Search(data, findMe,leftEnd, middle - 1);
+			}
+			else
+			{
+				//ok its not smaller
+				return Search(data, findMe, middle + 1, rightEnd);
+			}
+		}
+
+
+		//not in the array return -1 as thats not an index
+		return -1;
+	}
 	int GetSize()
 	{
 		return size;
@@ -142,6 +211,7 @@ private:
 	void Shrink()
 	{
 		size--;
+		//stop from shrinking to negative as I use size to position when accessing by index etc
 		ClampSize();
 	}
 
@@ -224,11 +294,6 @@ private:
 	int capacity; // number of elements which have memory allocated for
 	//FOR VIEWING IN WATCH USE data,10 etc data beingthe name and 10 being the number of spaces into the array you want to read
 	T* data; // our heap allocation for storing the contents of the dynamic array
-
-	//todo variants for ordered or sorted arrays 
-	//sort on add or not
-	//Ordered removal or not
-	//
 	bool ordered; // is it an ordered array
 	bool sorted; // is it sorted
 };
