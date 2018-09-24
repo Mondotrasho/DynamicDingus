@@ -1,175 +1,385 @@
 #pragma once
+#include <cassert>
+
 template <class TYPE>
 class DynamicDingus
 {
 public:
-
-	//  a.A constructor, destructor, assignment operator and copy constructor
-	DynamicDingus();
+	//mem management shenanigans
+	//these are the defaults
+	DynamicDingus(int start_capacity = 10, bool ord = true, bool sor = false);
+	DynamicDingus(DynamicDingus& other);
 	~DynamicDingus();
-	DynamicDingus(const DynamicDingus<TYPE>& other);
-	DynamicDingus<TYPE>& operator = (const DynamicDingus<TYPE>& other);
 
+	//adding
+	void push_back(TYPE value);
+	void push_front(TYPE value);
+	void insert(TYPE value, int pos);
+
+	//removing
+	TYPE pop_back();
+	TYPE pop_front();
+	void erase(int pos);
+
+	// quick sort and sub funtions
+	void sort(DynamicDingus& data, int begin, int end);
+	int divide(DynamicDingus& data, int begin, int end);
+	static void swap(DynamicDingus& data, TYPE rhs, int rhs_index, TYPE lhs, int lhs_index);
+	//Binary search
+	int search(DynamicDingus& data, TYPE find_me, int left_end, int right_end);
+
+	//utility and operators
+	int get_size() const;
 	TYPE& operator[](int index);
-	int getAllocatedInt() const { return allocatedElements / sizeof(TYPE); }
-	int getUsedInt() const { return usedElements / sizeof(TYPE); }
-	void setUsedInt(int a) { usedElements = a * sizeof(TYPE); }
-	//	b.Functions for adding and removing from the end of the array
-	void pushback(TYPE value);
-	void pushfront(TYPE value);
-	bool isEmpty() const { return usedElements == 0; }
-	void Clear();
+	void operator=(const DynamicDingus& other);
+	void clear();
 
-	void pushbefore(TYPE value);
-	void pushafter(TYPE value);
-		
-	    TYPE pop();
+private:
+	//short hand
+	void grow();
+	void shrink();
+	//sanitisng the size some times I shrink it to negative
+	void clamp_size();
+	//checking I am accessing a position I should with asserts
+	void verify_pos_out(int pos);
+	void verify_pos_in(int pos);
+	//constructor shortcuts
+	void make_copy_of(const DynamicDingus& other);
+	void set_capacity(int cap);
+	//grow check
+	void check_expand();
 
-		void set(size_t index, TYPE value);
-		TYPE get(size_t index);
+	//Member vars
+	//number of elements in our array atm
+	int m_size;
+	// number of reserver spots
+	int m_capacity;
+	//FOR VIEWING IN WATCH USE m_data,10 etc m_data beingthe name and 10 being the number of spaces into the array you want to read
+	//the Memory
+	TYPE* m_data;
 
-		size_t size();
-		size_t capacity();
-		void print();
-
-	private:
-		size_t allocatedElements;
-		size_t usedElements;
-		TYPE* theArray;
-		size_t initialSize ;
-		int spaceMulti = 2;
-
-		//Your class will need the following functions :
-		
-		
-		//	c.Functions for adding 1 or more elements from the middle of the array
-		//	d.Functions for removing from the middle of the array
-		//	i.Both ordered and unordered removal
-		//	e.Functions for changing how much space is allocated for the array
-		//	i.If less space is allocated than is used, the extra used data is discarded
-		//	f.A function for clearing the array
+	//togglable qualities
+	//Change how some functions work removal for ordered vs un ordered etc
+	// is it an m_ordered array
+	bool m_ordered;
+	// is it m_sorted
+	bool m_sorted;
 };
-template<class TYPE>
-DynamicDingus<TYPE>::DynamicDingus()
+
+template <typename TYPE>
+DynamicDingus<TYPE>::DynamicDingus(int start_capacity, bool ord, bool sor)
 {
-	initialSize = sizeof(TYPE) * 10;
-	allocatedElements = initialSize;
-	usedElements = 0;
-	theArray = new TYPE[allocatedElements]();
+	//allocate space for 10 elements
+	set_capacity(start_capacity);
+
+	//there is nothing in it
+	m_size = 0;
+	//is it an m_ordered array
+	m_ordered = ord;
+	//is it a m_sorted array
+	m_sorted = sor;
 }
 
-template <class TYPE>
+
+template <typename TYPE>
+DynamicDingus<TYPE>::DynamicDingus(DynamicDingus& other)
+{
+	make_copy_of(other);
+}
+
+template <typename TYPE>
 DynamicDingus<TYPE>::~DynamicDingus()
 {
-	delete[] theArray;
+	delete[] m_data;
 }
 
-template <class TYPE>
-void DynamicDingus<TYPE>::pushback(TYPE value)
+template <typename TYPE>
+void DynamicDingus<TYPE>::push_back(TYPE value)
 {
-	//IF array.allocatedElements == array.usedElements THEN
-	if (allocatedElements == usedElements)
+	//todo MAYBE use insert short code BUT it would maybe use the for loop in insert TBD
+	check_expand();
+
+	//add our value on to the end
+	m_data[m_size] = value;
+	grow();
+
+	//if its m_sorted and double check its not m_ordered as m_ordered takes priority over m_sorted
+	//as you can sort later or manually but you cannot order later
+	if (m_sorted && !m_ordered)
 	{
-		//	newData = new array[array.allocatedElements * 2];
-		auto NewDingus = new TYPE[allocatedElements * 2];
-		//copy(newData, array.data, array.allocatedElements);
-		copy(NewDingus, theArray, allocatedElements);
-		//delete array.data
-		delete theArray;
-		//	array.data = newData;
-		theArray = NewDingus;
-		//array.allocatedElements *= 2
-		allocatedElements *= 2;
+		sort(*this, 0, m_size);
 	}
-	if(theArray[usedElements] == value)
-	{
-		usedElements += 1 * sizeof(TYPE);
-	}
-	//	END IF
-	//	array.data[array.usedElements] = newElement;
-	//array.usedElements += 1;
 }
 
-template <class TYPE>
-void DynamicDingus<TYPE>::pushfront(TYPE value)
+template <typename TYPE>
+void DynamicDingus<TYPE>::push_front(TYPE value)
 {
-	//IF array.allocatedElements == array.usedElements THEN
-	if (allocatedElements == usedElements)
-	{
-		//	newData = new array[array.allocatedElements * 2];
-		auto NewDingus = new TYPE[allocatedElements * spaceMulti];
-		//copy(newData, array.data, array.allocatedElements);
-		copy(NewDingus, theArray, allocatedElements);
-		//delete array.data
-		delete theArray;
-		//	array.data = newData;
-		theArray = NewDingus;
-		//array.allocatedElements *= 2
-		allocatedElements *= 2;
-	}
-	if (theArray[usedElements] == value)
-	{
-		usedElements += 1 * sizeof(TYPE);
-	}
-	//	END IF
-	//	array.data[array.usedElements] = newElement;
-	//array.usedElements += 1;
+	//insert at begining
+	insert(value, 0);
 }
 
-template <class TYPE>
-void DynamicDingus<TYPE>::Clear()
+template <typename TYPE>
+void DynamicDingus<TYPE>::insert(TYPE value, int pos)
 {
-	usedElements = 0;	
+	//Verify input
+	verify_pos_in(pos);
+
+	check_expand();
+
+	//move everything in array forward by one after the pos
+	for (auto i = m_size; i > pos; i--)
+		m_data[i] = m_data[i - 1];
+
+	//add our value on to the front
+	m_data[pos] = value;
+	grow();
+
+	//if its m_sorted and double check its not m_ordered as m_ordered takes priority over m_sorted
+	//as you can sort later or manually but you cannot order later
+	if (m_sorted && !m_ordered)
+	{
+		sort(*this, 0, m_size);
+	}
 }
 
-template <class TYPE>
-DynamicDingus<TYPE>& DynamicDingus<TYPE>::operator=(const DynamicDingus<TYPE>& other)
+template <typename TYPE>
+TYPE DynamicDingus<TYPE>::pop_back()
 {
-	if (this == &other)
-	{
-		return *this; // I am myself
-	}
-	if (other.isEmpty())
-	{
-		this->Clear(); //the one we are copying from is empty so I need to be too
-	}
-	auto a = new TYPE[other.getAllocatedInt() * sizeof(TYPE)];
-	//copy from 0 - how ever many are allocated to how every are in the other
-	for (int i = 0; i < other.getAllocatedInt(); i++)
-		a[i] = other[i];
+	//using 1 less
+	shrink();
 
-	theArray = a;
-	return this;
+	//return the last one
+	return m_data[m_size];
 }
 
-template <class TYPE>
-TYPE& DynamicDingus<TYPE>::operator[](int index) {
+template <typename TYPE>
+TYPE DynamicDingus<TYPE>::pop_front()
+{
+	//store the front
+	TYPE value = m_data[0];
+	//remove it
+	erase(0);
 
+	return value;
+}
 
-	if (index >= this->getAllocatedInt()) {
+template <typename TYPE>
+void DynamicDingus<TYPE>::erase(int pos)
+{
+	verify_pos_out(pos);
 
-		//number of elements = this far in in TYPE bytes + 10 * TYPE bytes
-		allocatedElements = index * spaceMulti;
-		//the next array cause the old one does not go that high
-		TYPE* NewDingus = new TYPE[allocatedElements];
-		//from 0 - the last index copy in
-		for (int i = 0; i < this->getUsedInt(); i++)
-			NewDingus[i] = theArray[i];
-
-		//initialize the remaining positions using default
-		for (int j = this->getUsedInt(); j < this->getAllocatedInt(); j++)
-			NewDingus[j] = TYPE();
-
-		//delete the old array using the array version of delete
-		delete[] theArray;
-		//the array = next array
-		theArray = NewDingus;
-
+	if (m_ordered)
+	{
+		//move all above the  removed point down 1
+		for (auto i = pos; i < m_size; i++)
+			m_data[i] = m_data[i + 1];
 	}
-	//if the position is less than the last index we have accessed
-	if (index > this->getUsedInt())
-		//move forward 1 after where we are
-		usedElements = index*sizeof(TYPE) + sizeof(TYPE);
-	//return the pointer at 
-	return *(theArray + (index * sizeof(TYPE)));
+	else
+	{
+		//copy last over removed one
+		m_data[pos] = m_data[m_size - 1]; //todo check this is m_size - 1 the last one or the last - 1
+	}
+	shrink();
+}
+
+template <typename TYPE>
+void DynamicDingus<TYPE>::sort(DynamicDingus& data, int begin, int end)
+{
+	if (begin < end)
+	{
+		int divide_index = divide(data, begin, end);
+
+		sort(data, begin, divide_index - 1); // Before pi
+		sort(data, divide_index + 1, end); // After pi
+	}
+}
+
+template <typename TYPE>
+int DynamicDingus<TYPE>::divide(DynamicDingus& data, int begin, int end)
+{
+	// pivot (Element to be placed at right position)
+	TYPE pivot = data[end - 1];
+
+	// Index of smaller element
+	int i = (begin - 1);
+
+	for (auto j = begin; j < end - 1; j++)
+	{
+		// If current element is smaller than or
+		// equal to pivot
+		if (data[j] <= pivot)
+		{// increase index of smaller element
+			i++;
+			swap(*this, data[i], i, data[j], j);
+		}
+	}
+	swap(*this, data[i + 1], i + 1, data[end - 1], end - 1);
+	return (i + 1);
+}
+
+template <typename TYPE>
+void DynamicDingus<TYPE>::swap(DynamicDingus& data, TYPE rhs, int rhs_index, TYPE lhs, int lhs_index)
+{
+	//left is right
+	data[lhs_index] = rhs;
+	//rhs is stored left
+	data[rhs_index] = lhs;
+}
+
+template <typename TYPE>
+int DynamicDingus<TYPE>::search(DynamicDingus& data, TYPE find_me, int left_end, int right_end)
+{
+	if (!m_sorted)
+	{
+		sort(*this, 0, m_size);
+	}
+	//if we are in the area we are checking
+	if (right_end >= left_end)
+	{
+		//middle
+		//was using rightEnd / 2 but does not work recursively as we move the left point
+		auto middle = left_end + (right_end - left_end) / 2;
+
+		//is it in the middle
+		if (data[middle] == find_me)
+		{
+			return middle;
+		}
+
+		//if its smaller
+		if (data[middle] > find_me)
+		{
+			return search(data, find_me, left_end, middle - 1);
+		}
+		else
+		{
+			//ok its not smaller
+			return search(data, find_me, middle + 1, right_end);
+		}
+	}
+
+
+	//not in the array return -1 as thats not an index
+	return -1;
+}
+
+template <typename TYPE>
+int DynamicDingus<TYPE>::get_size() const
+{
+	return m_size;
+}
+
+template <typename TYPE>
+TYPE& DynamicDingus<TYPE>::operator[](int index)
+{
+	return m_data[index];
+}
+
+template <typename TYPE>
+void DynamicDingus<TYPE>::operator=(const DynamicDingus& other)
+{
+	make_copy_of(other);
+}
+
+template <typename TYPE>
+void DynamicDingus<TYPE>::clear()
+{
+	m_size = 0;
+}
+
+template <typename TYPE>
+void DynamicDingus<TYPE>::grow()
+{
+	m_size++;
+}
+
+template <typename TYPE>
+void DynamicDingus<TYPE>::shrink()
+{
+	m_size--;
+	//stop from shrinking to negative as I use m_size to position when accessing by index etc
+	clamp_size();
+}
+
+template <typename TYPE>
+void DynamicDingus<TYPE>::clamp_size()
+{
+	if (m_size < 0)
+	{
+		m_size = 0;
+	}
+}
+
+template <typename TYPE>
+void DynamicDingus<TYPE>::verify_pos_out(int pos)
+{
+	//check its valid
+	//less than 0 or greater than the m_size + 1
+	//0   -  9       10
+	//0   -  m_size    allocated
+	//taking from 0 to m_size
+	//taking from 0 to 9
+	if (pos < 0 || pos > m_size)
+	{
+		//"HEY THATS NOT IN RANGE"
+		assert(true);
+	}
+}
+
+template <typename TYPE>
+void DynamicDingus<TYPE>::verify_pos_in(int pos)
+{
+	//check its valid
+	//less than 0 or greater than the m_size + 1
+	//0   -  9       10
+	//0   -  m_size    allocated
+	//adding from 0 to m_size + 1
+	//adding from 0 to 10
+	if (pos < 0 || pos > m_size + 1)
+	{
+		//"HEY THATS TOO FAR INTO OUR ARRAY"
+		assert(true);
+	}
+}
+
+template <typename TYPE>
+void DynamicDingus<TYPE>::make_copy_of(const DynamicDingus& other)
+{
+	//allocate the same ammount of memory as the other has
+	set_capacity(other.m_capacity);
+
+	//fill m_data in
+	m_size = other.m_size;
+	for (int i = 0; i < m_size; ++i)
+		m_data[i] = other.m_data[i];
+
+	m_ordered = other.m_ordered;
+	m_sorted = other.m_sorted;
+}
+
+template <typename TYPE>
+void DynamicDingus<TYPE>::set_capacity(int cap)
+{
+	m_capacity = cap;
+	m_data = new TYPE[m_capacity];
+}
+
+template <typename TYPE>
+void DynamicDingus<TYPE>::check_expand()
+{
+	//if the array  needs to be grown grow it
+	if (m_size == m_capacity)
+	{
+		//dopuble m_capacity
+		m_capacity *= 2; //todo do we want to double it
+		TYPE* new_data = new TYPE[m_capacity];
+
+		//copy existing members to new bigger array
+		for (int i = 0; i < m_size; i++)
+			new_data[i] = m_data[i];
+
+		//delete the old allocation
+		delete[] m_data;
+		m_data = new_data;
+	}
 }
