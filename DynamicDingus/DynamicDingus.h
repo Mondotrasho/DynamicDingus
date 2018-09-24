@@ -1,5 +1,6 @@
 #pragma once
 #include <cassert>
+#include <vector>
 
 template <class TYPE>
 class DynamicDingus
@@ -33,6 +34,10 @@ public:
 	TYPE& operator[](int index);
 	void operator=(const DynamicDingus& other);
 	void clear();
+	//functions to enable hashing of the entire array
+	unsigned char* make_byte_array(DynamicDingus<TYPE>& dynamic_arr);
+	DynamicDingus<unsigned char>* make_dynamic_byte_array(DynamicDingus<TYPE>& dynamic_arr);
+	unsigned char TYPE_to_bytes(TYPE& data);
 
 private:
 	//short hand
@@ -48,6 +53,7 @@ private:
 	void set_capacity(int cap);
 	//grow check
 	void check_expand();
+
 
 	//Member vars
 	//number of elements in our array atm
@@ -383,3 +389,32 @@ void DynamicDingus<TYPE>::check_expand()
 		m_data = new_data;
 	}
 }
+
+template <class TYPE>
+unsigned char* DynamicDingus<TYPE>::make_byte_array(DynamicDingus<TYPE> &dynamic_arr)
+{
+	auto byte_array = new unsigned char[sizeof(TYPE) * m_size]();
+	for (int i = 0; i < dynamic_arr.get_size(); ++i)
+	{
+		byte_array[i] = TYPE_to_bytes(dynamic_arr[i]);
+	}
+	return byte_array;
+}
+template <class TYPE>
+DynamicDingus<unsigned char>* DynamicDingus<TYPE>::make_dynamic_byte_array(DynamicDingus<TYPE>& dynamic_arr)
+{
+	auto byte_array = new DynamicDingus<unsigned char>;
+	for (int i = 0; i < dynamic_arr.get_size(); ++i)
+	{
+		byte_array[i] = TYPE_to_bytes(dynamic_arr[i]);
+	}
+	return byte_array;
+}
+
+template <class TYPE>
+unsigned char DynamicDingus<TYPE>::TYPE_to_bytes(TYPE &data)
+{
+	auto bytes = static_cast<unsigned char>(data);
+	return bytes;
+}
+
